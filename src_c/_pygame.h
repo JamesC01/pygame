@@ -281,6 +281,33 @@ supported Python version. #endif */
 
 #define PyType_Init(x) (((x).ob_type) = &PyType_Type)
 
+#if PY_VERSION_HEX < 0x03070000
+/* Macro for a pygame fastcall wrapper function*/
+#define PG_FASTCALL(func) _##func##_fastcall_wrap
+
+/* If a function called 'pg_do_x' is written using the FASTCALL convention,
+ * using this macro like 'PG_WRAP_FASTCALL_FUNC(pg_do_x)' below the function
+ * declaration should export a '_pg_do_x_fastcall_wrap' function that uses
+ * regular python VARARGS convention. Since it is guaranteed that the 'args'
+ * object is a tuple, we can directly call PySequence_Fast_ITEMS and
+ * PyTuple_GET_SIZE on it (which are macros that assume the same, and don't do
+ * error checking) */
+#define PG_WRAP_FASTCALL_FUNC(func)                                       \
+    static PyObject *PG_FASTCALL(func)(PyObject * self, PyObject * args)  \
+    {                                                                     \
+        return func(self, (PyObject *const *)PySequence_Fast_ITEMS(args), \
+                    PyTuple_GET_SIZE(args));                              \
+    }
+
+#define METH_FASTCALL METH_VARARGS
+
+#else /* PY_VERSION_HEX >= 0x03070000 */
+/* compat macros are no-op on python versions that support fastcall */
+#define PG_FASTCALL(func) func
+#define PG_WRAP_FASTCALL_FUNC(func)
+
+#endif /* PY_VERSION_HEX >= 0x03070000 */
+
 /*
  * event module internals
  */
